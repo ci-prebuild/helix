@@ -70,6 +70,13 @@ jobs:
         with:
           toolchain: ${{ matrix.rust }}
 
+      - name: Prepare paths
+        run: |
+          cat <<EOF >>$GITHUB_ENV
+          PKG_DEB=target/debian/helix_${{ env.PKG_VERSION }}_${{ matrix.build }}.deb
+          PKG_TARBALL=helix_${{ env.PKG_VERSION }}_${{ matrix.build }}.tar.xz
+          EOF
+
       - name: Show command used for Cargo
         run: |
           echo "target flag is: ${{ env.TARGET_FLAGS }}"
@@ -97,24 +104,24 @@ jobs:
           cargo deb --no-build --no-strip --deb-version ${{ env.PKG_VERSION }}
           ls target/debian/
 
-      - name: Upload ${{ matrix.build }}.deb to artifacts
+      - name: Upload ${{ env.PKG_DEB }} to artifacts
         uses: actions/upload-artifact@v7
         if: env.preview == 'true'
         with:
-          name: helix_${{ env.PKG_VERSION }}_${{ matrix.build }}.deb
-          path: target/debian/helix_${{ env.PKG_VERSION }}_${{ matrix.build }}.deb
+          path: ${{ env.PKG_DEB }}
           archive: false
+          if-no-files-found: error
 
-      - name: Upload ${{ matrix.build }}.deb to release
+      - name: Upload ${{ env.PKG_DEB }} to release
         uses: svenstaro/upload-release-action@29e53e917877a24fad85510ded594ab3c9ca12de # 2.11.5
         if: env.preview == 'false'
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: target/debian/helix_${{ env.PKG_VERSION }}_${{ matrix.build }}.deb
+          file: ${{ env.PKG_DEB }}
           tag: ${{ github.ref_name }}
           overwrite: true
 
-      - name: Prepare dist for ${{ matrix.build }}.tar.xz
+      - name: Prepare dist for ${{ env.PKG_TARBALL }}
         shell: bash
         run: |
           mkdir -p dist
@@ -123,21 +130,21 @@ jobs:
             rm -rf runtime/grammars/sources
           fi
           cp -r runtime dist
-          tar cJf helix-${{ matrix.build }}.tar.xz dist/*
+          tar cJf ${{ env.PKG_TARBALL }} dist/*
 
-      - name: Upload helix-${{ matrix.build }}.tar.xz to artifacts
+      - name: Upload ${{ env.PKG_TARBALL }} to artifacts
         uses: actions/upload-artifact@v7
         if: env.preview == 'true'
         with:
-          name: helix_${{ env.PKG_VERSION }}_${{ matrix.build }}.tar.xz
-          path: helix-${{ matrix.build }}.tar.xz
+          path: ${{ env.PKG_TARBALL }}
           archive: false
+          if-no-files-found: error
 
       - name: Upload helix-${{ matrix.build }}.tar.xz to release
         uses: svenstaro/upload-release-action@29e53e917877a24fad85510ded594ab3c9ca12de # 2.11.5
         if: env.preview == 'false'
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: helix-${{ matrix.build }}.tar.xz
+          file: ${{ env.PKG_TARBALL }}
           tag: ${{ github.ref_name }}
           overwrite: true
